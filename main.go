@@ -8,38 +8,54 @@ import (
 )
 
 var (
-	log         *int
-	help        *bool
-	showVersion bool
-	version     = "dev"
-	commit      = "none"
-	date        = "unknown"
+	log     = 0
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 )
 
-func main() {
+func processArguments() {
+	var (
+		showHelp          *bool
+		showVersion       bool
+		showVersionNumber bool
+	)
+
 	// Parse flags
 	// see: https://pkg.go.dev/github.com/spf13/pflag
-	log = flag.IntP("verbose", "v", 0, "verbose level")
+	flag.IntVar(&log, "verbose", 0, "verbose level")
 	flag.Lookup("verbose").NoOptDefVal = "1"
-	flag.BoolVar(&showVersion, "version", false, "display version")
-	help = flag.BoolP("help", "h", false, "display help")
+	flag.Lookup("verbose").Shorthand = "v"
+	flag.BoolVar(&showVersion, "version", false, "display full version information")
+	flag.BoolVar(&showVersionNumber, "version-number", false, "display version number")
+	// Note: if we use BoolVar for help, we still see "pflag: help requested"
+	showHelp = flag.BoolP("help", "h", false, "display help")
 	flag.Parse()
 
-	if *log > 0 {
-		fmt.Fprintln(os.Stderr, "Logging level:", *log)
+	if log > 0 {
+		fmt.Fprintln(os.Stderr, "Logging level:", log)
 	}
 
-	if *help {
+	if *showHelp {
 		flag.Usage()
-		return
+		os.Exit(0)
+	}
+
+	if showVersionNumber {
+		fmt.Println(version)
+		os.Exit(0)
 	}
 
 	if showVersion {
 		// GoReleaser automatically sets the version, commit and date
 		// see: https://goreleaser.com/cookbooks/using-main.version/
 		fmt.Printf("go-aeneas version %s (commit %s, built at %s)\n", version, commit, date)
-		return
+		os.Exit(0)
 	}
+}
+
+func main() {
+	processArguments()
 
 	fmt.Println("Hello Aeneas")
 }
