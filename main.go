@@ -70,6 +70,9 @@ func main() {
 		}
 
 		err = json.Unmarshal(content, &tasks)
+		if err != nil {
+			log.Fatal("Error parsing batch json file", err)
+		}
 	} else if len(os.Args) >= 5 {
 		task := &Task{"", os.Args[1], os.Args[2], os.Args[3], os.Args[4]}
 		tasks = append(tasks, task)
