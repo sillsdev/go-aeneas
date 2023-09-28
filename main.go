@@ -1,17 +1,20 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 
 	flag "github.com/spf13/pflag"
 )
 
 var (
-	log     = 0
-	version = "dev"
-	commit  = "none"
-	date    = "unknown"
+	logLevel = 0
+	batch    = ""
+	version  = "dev"
+	commit   = "none"
+	date     = "unknown"
 )
 
 func processArguments() {
@@ -23,7 +26,8 @@ func processArguments() {
 
 	// Parse flags
 	// see: https://pkg.go.dev/github.com/spf13/pflag
-	flag.IntVar(&log, "verbose", 0, "verbose level")
+	flag.IntVar(&logLevel, "verbose", 0, "verbose level")
+	flag.StringVar(&batch, "batch", "", "batch JSON filename")
 	flag.Lookup("verbose").NoOptDefVal = "1"
 	flag.Lookup("verbose").Shorthand = "v"
 	flag.BoolVar(&showVersion, "version", false, "display full version information")
@@ -32,8 +36,8 @@ func processArguments() {
 	showHelp = flag.BoolP("help", "h", false, "display help")
 	flag.Parse()
 
-	if log > 0 {
-		fmt.Fprintln(os.Stderr, "Logging level:", log)
+	if logLevel > 0 {
+		fmt.Fprintln(os.Stderr, "Logging level:", logLevel)
 	}
 
 	if *showHelp {
@@ -57,5 +61,29 @@ func processArguments() {
 func main() {
 	processArguments()
 
-	fmt.Println("Hello Aeneas")
+	tasks := []*Task{}
+	if len(batch) > 0 {
+		fmt.Println("Batch file:", batch)
+		content, err := os.ReadFile(batch)
+		if err != nil {
+			log.Fatal("Error while reading batch file", err)
+		}
+
+		err = json.Unmarshal(content, &tasks)
+	} else if len(os.Args) >= 5 {
+		task := &Task{"", os.Args[1], os.Args[2], os.Args[3], os.Args[4]}
+		tasks = append(tasks, task)
+	}
+
+	for _, task := range tasks {
+		if len(task.Description) > 0 {
+			fmt.Println("")
+			fmt.Println("*** ", task.Description, " ***")
+			fmt.Println("")
+		}
+		fmt.Println("Audio   : ", task.AudioFilename)
+		fmt.Println("Phrase  : ", task.PhraseFilename)
+		fmt.Println("Output  : ", task.OutputFilename)
+		fmt.Println("Params  : ", task.Parameters)
+	}
 }
