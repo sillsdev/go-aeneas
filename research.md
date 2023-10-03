@@ -21,5 +21,5 @@ No equivalent GO third-party library for the existing python library.
 
 DTWSpeech - dtw.py
 DTW refers to dynamic time warping, an algorithm used to compare the timing sequences of two similar audio waves. This algorithm uses detailed analysis and comparison of two piece-wise functions to achieve temporal alignment. 
-Aeneas currently uses aeneas.cdtw Python C Extension to compute the DTW (Best path between two audio waves given the MFCC), the approximated cost matrix, and the accumulated cost matrix. All functions return tuples.
+Aeneas currently uses aeneas.cdtw Python C Extension to compute the DTW (Best path between two audio waves given the MFCC), the approximated cost matrix, and the accumulated cost matrix. All functions return tuples in an array format, should utilize slices in GO transposition.
 Potential alternative is Mjanda DTW for GO: https://github.com/mjanda/go-dtw which is ported from a detailed javascript implementation of DTW.
