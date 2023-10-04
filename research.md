@@ -1,4 +1,4 @@
-# Go-Aeneas Research
+# Go-Aeneas Research - Liberty Capstone go-aeneas Team
 
 ### Currently existing python libraries:
 
