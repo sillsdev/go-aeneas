@@ -20,3 +20,6 @@ go-aeneas
 
 # Go workspace file
 go.work
+
+# VSCode Configuration .vs file
+.vscode/
