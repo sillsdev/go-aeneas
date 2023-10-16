@@ -12,6 +12,20 @@ var (
 	batch    = ""
 )
 
+func processTask(done chan bool, task *Task) {
+	if len(task.Description) > 0 {
+		fmt.Println("")
+		fmt.Println("*** ", task.Description, " ***")
+		fmt.Println("")
+	}
+	fmt.Println("Audio   : ", task.AudioFilename)
+	fmt.Println("Phrase  : ", task.PhraseFilename)
+	fmt.Println("Output  : ", task.OutputFilename)
+	fmt.Println("Params  : ", task.Parameters)
+
+	done <- true
+}
+
 func main() {
 	processArguments()
 
@@ -32,15 +46,13 @@ func main() {
 		tasks = append(tasks, task)
 	}
 
+	doneChannel := make(chan bool)
+
 	for _, task := range tasks {
-		if len(task.Description) > 0 {
-			fmt.Println("")
-			fmt.Println("*** ", task.Description, " ***")
-			fmt.Println("")
-		}
-		fmt.Println("Audio   : ", task.AudioFilename)
-		fmt.Println("Phrase  : ", task.PhraseFilename)
-		fmt.Println("Output  : ", task.OutputFilename)
-		fmt.Println("Params  : ", task.Parameters)
+		go processTask(doneChannel, task)
+	}
+
+	for _ = range tasks {
+		_ = <-doneChannel
 	}
 }
