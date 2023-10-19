@@ -38,9 +38,12 @@ func main() {
 			fmt.Println("*** ", task.Description, " ***")
 			fmt.Println("")
 		}
+
+		parameters := parseParameters(task.Parameters)
+
 		fmt.Println("Audio   : ", task.AudioFilename)
 		fmt.Println("Phrase  : ", task.PhraseFilename)
 		fmt.Println("Output  : ", task.OutputFilename)
-		fmt.Println("Params  : ", task.Parameters)
+		fmt.Println("Parameters : ", parameters)
 	}
 }
