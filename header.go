@@ -1,14 +1,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"strings"
 )
 
-func logHeader(ctx context.Context) {
-	builder := ctx.Value(logBuilderKey).(*strings.Builder)
-	task := ctx.Value(taskKey).(*Task)
+func logHeader(task *Task, builder *strings.Builder) {
 	if len(task.Description) > 0 {
 		builder.WriteString(fmt.Sprintln(""))
 		builder.WriteString(fmt.Sprintln("*** ", task.Description, " ***"))

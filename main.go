@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,13 +12,6 @@ import (
 var (
 	logLevel = 0
 	batch    = ""
-)
-
-type contextKey int
-
-const (
-	taskKey contextKey = iota
-	logBuilderKey
 )
 
 func main() {
@@ -44,23 +36,20 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	doneCh := make(chan context.Context, len(tasks))
+	doneCh := make(chan *strings.Builder, len(tasks))
 
 	for _, task := range tasks {
-		taskCtx, cancel := context.WithCancel(context.Background())
-		taskCtx = context.WithValue(taskCtx, taskKey, task)
-		taskCtx = context.WithValue(taskCtx, logBuilderKey, &strings.Builder{})
+		builder := &strings.Builder{}
 
-		logHeader(taskCtx)
+		logHeader(task, builder)
 
-		go func(ctx context.Context) {
+		go func(task *Task, builder *strings.Builder) {
 			defer wg.Done()
-			defer cancel()
 
-			runPipeline(ctx)
+			runPipeline(task, builder)
 
-			doneCh <- ctx
-		}(taskCtx)
+			doneCh <- builder
+		}(task, builder)
 
 		wg.Add(1)
 	}
@@ -70,8 +59,7 @@ func main() {
 		close(doneCh)
 	}()
 
-	for taskCtx := range doneCh {
-		builder := taskCtx.Value(logBuilderKey).(*strings.Builder)
+	for builder := range doneCh {
 		fmt.Println(builder.String())
 	}
 }
