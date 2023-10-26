@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 )
 
 func runPipeline(ctx context.Context) {
 	task := ctx.Value(taskKey).(*Task)
-	taskId := ctx.Value(taskIdKey).(int)
 
-	builder := logBuilders.Get(taskId)
+	builder := ctx.Value(logBuilderKey).(*strings.Builder)
 
 	builder.WriteString(fmt.Sprintln("Running pipeline..."))
 

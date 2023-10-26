@@ -6,20 +6,20 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 )
 
 var (
-	logLevel    = 0
-	batch       = ""
-	logBuilders *LogBuilders
+	logLevel = 0
+	batch    = ""
 )
 
 type contextKey int
 
 const (
-	taskIdKey contextKey = iota
-	taskKey
+	taskKey contextKey = iota
+	logBuilderKey
 )
 
 func main() {
@@ -44,16 +44,14 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	doneCh := make(chan int, len(tasks))
-	logBuilders = NewLogBuilders(len(tasks))
+	doneCh := make(chan context.Context, len(tasks))
 
-	for taskId, task := range tasks {
-		ctx, cancel := context.WithCancel(context.Background())
-
-		taskCtx := context.WithValue(ctx, taskIdKey, taskId)
+	for _, task := range tasks {
+		taskCtx, cancel := context.WithCancel(context.Background())
 		taskCtx = context.WithValue(taskCtx, taskKey, task)
+		taskCtx = context.WithValue(taskCtx, logBuilderKey, &strings.Builder{})
 
-		logHeader(taskId, task)
+		logHeader(taskCtx)
 
 		go func(ctx context.Context) {
 			defer wg.Done()
@@ -61,8 +59,7 @@ func main() {
 
 			runPipeline(ctx)
 
-			taskId := ctx.Value(taskIdKey).(int)
-			doneCh <- taskId
+			doneCh <- ctx
 		}(taskCtx)
 
 		wg.Add(1)
@@ -73,8 +70,8 @@ func main() {
 		close(doneCh)
 	}()
 
-	for taskId := range doneCh {
-		builder := logBuilders.Get(taskId)
+	for taskCtx := range doneCh {
+		builder := taskCtx.Value(logBuilderKey).(*strings.Builder)
 		fmt.Println(builder.String())
 	}
 }

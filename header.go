@@ -1,9 +1,14 @@
 package main
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"strings"
+)
 
-func logHeader(taskId int, task *Task) {
-	builder := logBuilders.Get(taskId)
+func logHeader(ctx context.Context) {
+	builder := ctx.Value(logBuilderKey).(*strings.Builder)
+	task := ctx.Value(taskKey).(*Task)
 	if len(task.Description) > 0 {
 		builder.WriteString(fmt.Sprintln(""))
 		builder.WriteString(fmt.Sprintln("*** ", task.Description, " ***"))
