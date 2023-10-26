@@ -1,16 +1,38 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"strings"
+	"time"
 )
 
 var (
 	logLevel = 0
 	batch    = ""
 )
+
+func processTask(ctx context.Context, results chan string, task *Task) {
+	sb := strings.Builder{}
+
+	if len(task.Description) > 0 {
+		sb.WriteString(fmt.Sprintln(""))
+		sb.WriteString(fmt.Sprintln("*** ", task.Description, " ***"))
+		sb.WriteString(fmt.Sprintln(""))
+	}
+
+	parameters := parseParameters(task.Parameters)
+
+	sb.WriteString(fmt.Sprintln("Audio   : ", task.AudioFilename))
+	sb.WriteString(fmt.Sprintln("Phrase  : ", task.PhraseFilename))
+	sb.WriteString(fmt.Sprintln("Output  : ", task.OutputFilename))
+	sb.WriteString(fmt.Sprintln("Parameters : ", parameters))
+
+	results <- sb.String()
+}
 
 func main() {
 	processArguments()
@@ -32,18 +54,15 @@ func main() {
 		tasks = append(tasks, task)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
+	results := make(chan string, len(tasks))
+
 	for _, task := range tasks {
-		if len(task.Description) > 0 {
-			fmt.Println("")
-			fmt.Println("*** ", task.Description, " ***")
-			fmt.Println("")
-		}
+		go processTask(ctx, results, task)
+	}
 
-		parameters := parseParameters(task.Parameters)
-
-		fmt.Println("Audio   : ", task.AudioFilename)
-		fmt.Println("Phrase  : ", task.PhraseFilename)
-		fmt.Println("Output  : ", task.OutputFilename)
-		fmt.Println("Parameters : ", parameters)
+	for range tasks {
+		fmt.Println(<-results)
 	}
 }
