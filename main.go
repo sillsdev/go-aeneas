@@ -5,12 +5,51 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 )
 
 var (
 	logLevel = 0
 	batch    = ""
 )
+
+func processTask(results chan string, task *Task) {
+	log := make(chan string)
+	done := make(chan struct{})
+
+	go func() {
+		sb := strings.Builder{}
+		defer func() {
+			results <- sb.String()
+		}()
+
+		for {
+			select {
+			case msg := <-log:
+				sb.WriteString(msg)
+
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	// part taken from main
+	if len(task.Description) > 0 {
+		log <- fmt.Sprintln("")
+		log <- fmt.Sprintln("*** ", task.Description, " ***")
+		log <- fmt.Sprintln("")
+	}
+
+	parameters := parseParameters(task.Parameters)
+
+	log <- fmt.Sprintln("Audio   : ", task.AudioFilename)
+	log <- fmt.Sprintln("Phrase  : ", task.PhraseFilename)
+	log <- fmt.Sprintln("Output  : ", task.OutputFilename)
+	log <- fmt.Sprintln("Parameters : ", parameters)
+
+	done <- struct{}{}
+}
 
 func main() {
 	processArguments()
@@ -32,18 +71,15 @@ func main() {
 		tasks = append(tasks, task)
 	}
 
+	results := make(chan string)
+
 	for _, task := range tasks {
-		if len(task.Description) > 0 {
-			fmt.Println("")
-			fmt.Println("*** ", task.Description, " ***")
-			fmt.Println("")
-		}
+		go processTask(results, task)
+	}
 
-		parameters := parseParameters(task.Parameters)
+	// let processing take place in the background...
 
-		fmt.Println("Audio   : ", task.AudioFilename)
-		fmt.Println("Phrase  : ", task.PhraseFilename)
-		fmt.Println("Output  : ", task.OutputFilename)
-		fmt.Println("Parameters : ", parameters)
+	for range tasks {
+		fmt.Println(<-results)
 	}
 }
