@@ -1,15 +1,25 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"sync"
 )
 
 var (
-	logLevel = 0
-	batch    = ""
+	logLevel    = 0
+	batch       = ""
+	logBuilders *LogBuilders
+)
+
+type contextKey int
+
+const (
+	taskIdKey contextKey = iota
+	taskKey
 )
 
 func main() {
@@ -32,18 +42,39 @@ func main() {
 		tasks = append(tasks, task)
 	}
 
-	for _, task := range tasks {
-		if len(task.Description) > 0 {
-			fmt.Println("")
-			fmt.Println("*** ", task.Description, " ***")
-			fmt.Println("")
-		}
+	var wg sync.WaitGroup
 
-		parameters := parseParameters(task.Parameters)
+	doneCh := make(chan int, len(tasks))
+	logBuilders = NewLogBuilders(len(tasks))
 
-		fmt.Println("Audio   : ", task.AudioFilename)
-		fmt.Println("Phrase  : ", task.PhraseFilename)
-		fmt.Println("Output  : ", task.OutputFilename)
-		fmt.Println("Parameters : ", parameters)
+	for taskId, task := range tasks {
+		ctx, cancel := context.WithCancel(context.Background())
+
+		taskCtx := context.WithValue(ctx, taskIdKey, taskId)
+		taskCtx = context.WithValue(taskCtx, taskKey, task)
+
+		logHeader(taskId, task)
+
+		go func(ctx context.Context) {
+			defer wg.Done()
+			defer cancel()
+
+			runPipeline(ctx)
+
+			taskId := ctx.Value(taskIdKey).(int)
+			doneCh <- taskId
+		}(taskCtx)
+
+		wg.Add(1)
+	}
+
+	go func() {
+		wg.Wait()
+		close(doneCh)
+	}()
+
+	for taskId := range doneCh {
+		builder := logBuilders.Get(taskId)
+		fmt.Println(builder.String())
 	}
 }
