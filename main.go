@@ -5,12 +5,32 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 )
 
 var (
 	logLevel = 0
 	batch    = ""
 )
+
+func processTask(results chan string, task *Task) {
+	logs := strings.Builder{}
+
+	if len(task.Description) > 0 {
+		logs.WriteString(fmt.Sprintln(""))
+		logs.WriteString(fmt.Sprintln("*** ", task.Description, " ***"))
+		logs.WriteString(fmt.Sprintln(""))
+	}
+
+	parameters := parseParameters(task.Parameters)
+
+	logs.WriteString(fmt.Sprintln("Audio   : ", task.AudioFilename))
+	logs.WriteString(fmt.Sprintln("Phrase  : ", task.PhraseFilename))
+	logs.WriteString(fmt.Sprintln("Output  : ", task.OutputFilename))
+	logs.WriteString(fmt.Sprintln("Parameters : ", parameters))
+
+	results <- logs.String()
+}
 
 func main() {
 	processArguments()
@@ -32,18 +52,13 @@ func main() {
 		tasks = append(tasks, task)
 	}
 
+	results := make(chan string)
+
 	for _, task := range tasks {
-		if len(task.Description) > 0 {
-			fmt.Println("")
-			fmt.Println("*** ", task.Description, " ***")
-			fmt.Println("")
-		}
+		go processTask(results, task)
+	}
 
-		parameters := parseParameters(task.Parameters)
-
-		fmt.Println("Audio   : ", task.AudioFilename)
-		fmt.Println("Phrase  : ", task.PhraseFilename)
-		fmt.Println("Output  : ", task.OutputFilename)
-		fmt.Println("Parameters : ", parameters)
+	for range tasks {
+		fmt.Println(<-results)
 	}
 }
