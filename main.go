@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 )
 
 var (
@@ -14,22 +13,21 @@ var (
 )
 
 func processTask(results chan string, task *Task) {
-	logs := strings.Builder{}
+	tpv := NewTaskProcessVariables(task)
+	defer func() {
+		results <- tpv.GetFinalLogs()
+	}()
 
 	if len(task.Description) > 0 {
-		logs.WriteString(fmt.Sprintln(""))
-		logs.WriteString(fmt.Sprintln("*** ", task.Description, " ***"))
-		logs.WriteString(fmt.Sprintln(""))
+		tpv.Println("")
+		tpv.Println("*** ", tpv.Task.Description, " ***")
+		tpv.Println("")
 	}
 
-	parameters := parseParameters(task.Parameters)
-
-	logs.WriteString(fmt.Sprintln("Audio   : ", task.AudioFilename))
-	logs.WriteString(fmt.Sprintln("Phrase  : ", task.PhraseFilename))
-	logs.WriteString(fmt.Sprintln("Output  : ", task.OutputFilename))
-	logs.WriteString(fmt.Sprintln("Parameters : ", parameters))
-
-	results <- logs.String()
+	tpv.Println("Audio   : ", tpv.Task.AudioFilename)
+	tpv.Println("Phrase  : ", tpv.Task.PhraseFilename)
+	tpv.Println("Output  : ", tpv.Task.OutputFilename)
+	tpv.Println("Parameters : ", tpv.Parameters)
 }
 
 func main() {
