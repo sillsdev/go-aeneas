@@ -12,3 +12,10 @@ Project Pipeline:
     - Write new timing to file
 - End processTask
 - Collect logs (buffer) and print to console
+
+## Development setup
+
+Install Docker, VS Code, and the dev containers extension for VS Code.
+Clone this repository with git and open it in VS Code
+There should be a prompt in the bottom right to 'Reopen in dev container'; click the button to confirm this action
+If this does not show up, press Ctrl-Shift-P to open the command pallette and search for 'Dev Containers: Reopen in Container'
