@@ -1,2 +1,6 @@
+github.com/gopherjs/gopherjs v1.17.2 h1:fQnZVsXk8uxXIStYb0N4bGk7jeyTalG/wsZjQ25dO0g=
+github.com/gopherjs/gopherjs v1.17.2/go.mod h1:pRRIvn/QzFLrKfvEz3qUuEhtE/zLCWfreZ6J5gM2i+k=
 github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
 github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
+gopkg.in/BenLubar/espeak.v2 v2.0.0-20181124182917-97aeeb571327 h1:jjJNLq1LHy6bA/NnXW+O/g1boI7KCUUAC/o7oImVhlQ=
+gopkg.in/BenLubar/espeak.v2 v2.0.0-20181124182917-97aeeb571327/go.mod h1:IeU4+ueApmcGSgEIeUi7pb1FFE2lPh0jQO4tic1eByc=

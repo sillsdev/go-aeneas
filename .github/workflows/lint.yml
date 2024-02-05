@@ -20,6 +20,9 @@ jobs:
           go-version: "1.21"
           cache: false
 
+      - name: Install espeak-ng
+        run: sudo apt-get install -y libespeak-ng-dev
+
       - name: golanci-lint
         uses: golangci/golangci-lint-action@v3
         with:
