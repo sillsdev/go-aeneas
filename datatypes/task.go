@@ -1,4 +1,4 @@
-package main
+package datatypes
 
 import (
 	"fmt"
@@ -17,13 +17,15 @@ type TaskProcessVariables struct {
 	Task       *Task
 	Logs       strings.Builder
 	Parameters *Parameters
+	Generator  *AudioGenerator
 }
 
-func NewTaskProcessVariables(task *Task) *TaskProcessVariables {
+func NewTaskProcessVariables(task *Task, generator *AudioGenerator) *TaskProcessVariables {
 	return &TaskProcessVariables{
 		Task:       task,
 		Logs:       strings.Builder{},
-		Parameters: parseParameters(task.Parameters),
+		Parameters: ParseParameters(task.Parameters),
+		Generator:  generator,
 	}
 }
 
