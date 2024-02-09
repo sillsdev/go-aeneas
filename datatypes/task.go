@@ -18,6 +18,7 @@ type TaskProcessVariables struct {
 	Logs       strings.Builder
 	Parameters *Parameters
 	Generator  *AudioGenerator
+	Audiowav   string
 }
 
 func NewTaskProcessVariables(task *Task, generator *AudioGenerator) *TaskProcessVariables {

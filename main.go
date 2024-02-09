@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
+	"path/filepath"
 
 	"github.com/sillsdev/go-aeneas/audiogenerators"
 	"github.com/sillsdev/go-aeneas/datatypes"
@@ -31,6 +33,18 @@ func processTask(results chan string, task *datatypes.Task, generator *datatypes
 	tpv.Println("Phrase  : ", tpv.Task.PhraseFilename)
 	tpv.Println("Output  : ", tpv.Task.OutputFilename)
 	tpv.Println("Parameters : ", tpv.Parameters)
+
+	tempwav, err := os.MkdirTemp("", "tempwav")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Temporary Directory Made: ", tempwav)
+
+	tpv.Audiowav = filepath.Join(tempwav, filepath.Base(tpv.Task.AudioFilename)+".wav")
+
+	out, _ := exec.Command("ffmpeg", "-i", tpv.Task.AudioFilename, "-acodec", "pcm_s16le", "-ac", "1", "-ar", "16000", tpv.Audiowav).CombinedOutput()
+	tpv.Println("ffmpeg output : ", string(out))
+
 }
 
 func main() {
@@ -69,4 +83,5 @@ func main() {
 	for range tasks {
 		fmt.Println(<-results)
 	}
+
 }
