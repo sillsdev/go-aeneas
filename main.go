@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 
 	"github.com/sillsdev/go-aeneas/audiogenerators"
 	"github.com/sillsdev/go-aeneas/datatypes"
@@ -17,8 +16,8 @@ var (
 	batch    = ""
 )
 
-func processTask(results chan string, task *datatypes.Task, generator *datatypes.AudioGenerator) {
-	tpv := datatypes.NewTaskProcessVariables(task, generator)
+func processTask(results chan string, task *datatypes.Task, generator *datatypes.AudioGenerator, tempDir string) {
+	tpv := datatypes.NewTaskProcessVariables(task, generator, tempDir)
 	defer func() {
 		results <- tpv.GetFinalLogs()
 	}()
@@ -34,17 +33,27 @@ func processTask(results chan string, task *datatypes.Task, generator *datatypes
 	tpv.Println("Output  : ", tpv.Task.OutputFilename)
 	tpv.Println("Parameters : ", tpv.Parameters)
 
-	tempwav, err := os.MkdirTemp("", "tempwav")
+	wavs := make(chan string)
+	go convertWav(wavs, tpv)
+	for range wavs {
+		tpv.Println("Wave Filepath:", <-wavs)
+	}
+}
+
+func createTempDir() string {
+	TempDir, err := os.MkdirTemp("", "goaeneas")
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("Temporary Directory Made: ", tempwav)
 
-	tpv.Audiowav = filepath.Join(tempwav, filepath.Base(tpv.Task.AudioFilename)+".wav")
+	return TempDir
+}
 
-	out, _ := exec.Command("ffmpeg", "-i", tpv.Task.AudioFilename, "-acodec", "pcm_s16le", "-ac", "1", "-ar", "16000", tpv.Audiowav).CombinedOutput()
+func convertWav(wavs chan<- string, tpv *datatypes.TaskProcessVariables) {
+	filepath := tpv.GetWavFilepath()
+	out, _ := exec.Command("ffmpeg", "-i", tpv.Task.AudioFilename, "-acodec", "pcm_s16le", "-ac", "1", "-ar", "16000", filepath).CombinedOutput()
+	wavs <- filepath
 	tpv.Println("ffmpeg output : ", string(out))
-
 }
 
 func main() {
@@ -76,8 +85,10 @@ func main() {
 	results := make(chan string)
 	var generator datatypes.AudioGenerator = audiogenerators.GetEspeakGenerator()
 
+	tempDir := createTempDir()
+
 	for _, task := range tasks {
-		go processTask(results, task, &generator)
+		go processTask(results, task, &generator, tempDir)
 	}
 
 	for range tasks {
