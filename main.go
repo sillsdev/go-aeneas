@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+
+	"github.com/sillsdev/go-aeneas/audiogenerators"
+	"github.com/sillsdev/go-aeneas/datatypes"
 )
 
 var (
@@ -12,8 +15,8 @@ var (
 	batch    = ""
 )
 
-func processTask(results chan string, task *Task) {
-	tpv := NewTaskProcessVariables(task)
+func processTask(results chan string, task *datatypes.Task, generator *datatypes.AudioGenerator) {
+	tpv := datatypes.NewTaskProcessVariables(task, generator)
 	defer func() {
 		results <- tpv.GetFinalLogs()
 	}()
@@ -33,7 +36,7 @@ func processTask(results chan string, task *Task) {
 func main() {
 	processArguments()
 
-	tasks := []*Task{}
+	tasks := []*datatypes.Task{}
 	if len(batch) > 0 {
 		fmt.Println("Batch file:", batch)
 		content, err := os.ReadFile(batch)
@@ -46,14 +49,21 @@ func main() {
 			log.Fatal("Error parsing batch json file", err)
 		}
 	} else if len(os.Args) >= 5 {
-		task := &Task{"", os.Args[1], os.Args[2], os.Args[3], os.Args[4]}
+		task := &datatypes.Task{
+			Description:    "",
+			AudioFilename:  os.Args[1],
+			PhraseFilename: os.Args[2],
+			Parameters:     os.Args[3],
+			OutputFilename: os.Args[4],
+		}
 		tasks = append(tasks, task)
 	}
 
 	results := make(chan string)
+	var generator datatypes.AudioGenerator = audiogenerators.GetEspeakGenerator()
 
 	for _, task := range tasks {
-		go processTask(results, task)
+		go processTask(results, task, &generator)
 	}
 
 	for range tasks {

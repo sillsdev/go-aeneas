@@ -1,4 +1,4 @@
-package main
+package datatypes
 
 import (
 	"strings"
@@ -14,7 +14,7 @@ func (p Parameters) Get(key string) string {
 	return p.m[key]
 }
 
-func parseParameters(parameterString string) *Parameters {
+func ParseParameters(parameterString string) *Parameters {
 	subParameters := strings.Split(parameterString, "|")
 	mapParameters := make(map[string]string)
 
