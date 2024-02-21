@@ -35,9 +35,7 @@ func processTask(results chan string, task *datatypes.Task, generator *datatypes
 
 	wavs := make(chan string)
 	go convertWav(wavs, tpv)
-	for range wavs {
-		tpv.Println("Wave Filepath:", <-wavs)
-	}
+	tpv.Println("Wave Filepath:", <-wavs)
 }
 
 func createTempDir() string {
@@ -45,7 +43,6 @@ func createTempDir() string {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	return TempDir
 }
 

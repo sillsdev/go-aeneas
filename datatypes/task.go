@@ -45,5 +45,5 @@ func (tpv *TaskProcessVariables) GetFinalLogs() string {
 }
 
 func (tpv *TaskProcessVariables) GetWavFilepath() string {
-	return filepath.Join(tpv.TempDir, tpv.Task.AudioFilename+".wav")
+	return filepath.Join(tpv.TempDir, filepath.Base(tpv.Task.AudioFilename)+".wav")
 }
