@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -16,6 +18,54 @@ var (
 	batch    = ""
 )
 
+func readFileLines(path string) ([]string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	reader := bufio.NewReader(file)
+
+	results := make([]string, 12)
+
+	err = nil
+	for err == nil {
+		str, err := reader.ReadString('\n')
+		if err != io.EOF && err != nil {
+			return nil, err
+		}
+		if str != "" {
+			results = append(results, str)
+		}
+	}
+
+	return results, nil
+}
+
+type PhraseReadResults struct {
+	phrases []*datatypes.Phrase
+	err     error
+}
+
+func readPhrasesFromFile(filename string, phraseResults chan PhraseReadResults) {
+	phrases, err := readFileLines(filename)
+	if err != nil {
+		phraseResults <- PhraseReadResults{nil, err}
+		return
+	}
+	parsedPhrases := make([]*datatypes.Phrase, len(phrases))
+	for _, phrase := range phrases {
+		parsedPhrase, err := datatypes.ParsePhrase(phrase)
+		if err != nil {
+			phraseResults <- PhraseReadResults{nil, err}
+			return
+		}
+		parsedPhrases = append(parsedPhrases, parsedPhrase)
+	}
+
+	phraseResults <- PhraseReadResults{parsedPhrases, nil}
+}
+
 func processTask(results chan string, task *datatypes.Task, generator *datatypes.AudioGenerator, tempDir string) {
 	tpv := datatypes.NewTaskProcessVariables(task, generator, tempDir)
 	defer func() {
@@ -27,7 +77,6 @@ func processTask(results chan string, task *datatypes.Task, generator *datatypes
 		tpv.Println("*** ", tpv.Task.Description, " ***")
 		tpv.Println("")
 	}
-
 	tpv.Println("Audio   : ", tpv.Task.AudioFilename)
 	tpv.Println("Phrase  : ", tpv.Task.PhraseFilename)
 	tpv.Println("Output  : ", tpv.Task.OutputFilename)
@@ -35,7 +84,15 @@ func processTask(results chan string, task *datatypes.Task, generator *datatypes
 
 	wavs := make(chan string)
 	go convertWav(wavs, tpv)
+
+	phrases := make(chan PhraseReadResults)
+	go readPhrasesFromFile(tpv.Task.PhraseFilename, phrases)
+
 	tpv.Println("Wave Filepath:", <-wavs)
+	phraseResults := <-phrases
+	if phraseResults.err != nil {
+		tpv.Println("Error parsing phrases:", phraseResults.err)
+	}
 }
 
 func createTempDir() string {
