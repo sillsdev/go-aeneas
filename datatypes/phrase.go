@@ -3,8 +3,8 @@ package datatypes
 import "strings"
 
 type Phrase struct {
-	phraseIndex string
-	phraseText   string
+	PhraseIndex string
+	PhraseText  string
 }
 
 func ParsePhrase(phraseLine string) (*Phrase, error) {
@@ -15,8 +15,8 @@ func ParsePhrase(phraseLine string) (*Phrase, error) {
 	}
 
 	return &Phrase{
-		phraseIndex: phraseParts[0],
-		phraseText:   phraseParts[1],
+		PhraseIndex: phraseParts[0],
+		PhraseText:  phraseParts[1],
 	}, nil
 }
 
