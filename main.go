@@ -152,14 +152,14 @@ func processTask(results chan string, task *datatypes.Task, generator *datatypes
 	}()
 
 	if len(task.Description) > 0 {
-		fmt.Println("")
-		fmt.Println("*** ", tpv.Task.Description, " ***")
-		fmt.Println("")
+		tpv.Println("")
+		tpv.Println("*** ", tpv.Task.Description, " ***")
+		tpv.Println("")
 	}
-	fmt.Println("Audio   : ", tpv.Task.AudioFilename)
-	fmt.Println("Phrase  : ", tpv.Task.PhraseFilename)
-	fmt.Println("Output  : ", tpv.Task.OutputFilename)
-	fmt.Println("Parameters : ", tpv.Parameters)
+	tpv.Println("Audio   : ", tpv.Task.AudioFilename)
+	tpv.Println("Phrase  : ", tpv.Task.PhraseFilename)
+	tpv.Println("Output  : ", tpv.Task.OutputFilename)
+	tpv.Println("Parameters : ", tpv.Parameters)
 
 	wavs := make(chan string)
 	go convertWav(wavs, tpv)
@@ -167,18 +167,18 @@ func processTask(results chan string, task *datatypes.Task, generator *datatypes
 	parsedPhrases := readPhrasesFromFile(tpv.Task.PhraseFilename)
 	phrasesWithFiles := generateWavFilesForPhrases(tpv, parsedPhrases)
 
-	fmt.Println("Wave Filepath:", <-wavs)
+	tpv.Println("Wave Filepath:", <-wavs)
 
-	fmt.Println("Logs for generated phrases:")
+	tpv.Println("Logs for generated phrases:")
 	for phraseLogItem := range phrasesWithFiles {
 		if phraseLogItem.err != nil {
-			fmt.Println("\tError generating phrase: ", phraseLogItem.err)
+			tpv.Println("\tError generating phrase: ", phraseLogItem.err)
 		} else {
-			fmt.Println("\tFile successfully generated! ", phraseLogItem.phraseWav.phraseWavFilePath)
+			tpv.Println("\tFile successfully generated! ", phraseLogItem.phraseWav.phraseWavFilePath)
 		}
 	}
 
-	fmt.Println("Done!")
+	tpv.Println("Done!")
 }
 
 func createTempDir() string {
