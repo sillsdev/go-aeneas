@@ -52,32 +52,26 @@ type PhraseReadResults struct {
  * Each individual line may fail to parse if the file is malformed,
  * and this error is passed along per line in the channel returned
  *
- * This channel is safe to read until completion
+ * Closes the channel provided as input
  */
-func readPhrasesFromFile(filename string) chan PhraseReadResults {
-	phraseResults := make(chan PhraseReadResults)
+func readPhrasesFromFile(filename string, phraseResults chan<- PhraseReadResults) {
+	defer close(phraseResults)
 
-	go func() {
-		defer close(phraseResults)
+	phrases, err := readFileLines(filename)
+	if err != nil {
+		phraseResults <- PhraseReadResults{nil, err}
+		return
+	}
 
-		phrases, err := readFileLines(filename)
+	for _, phrase := range phrases {
+		parsedPhrase, err := datatypes.ParsePhrase(phrase)
 		if err != nil {
 			phraseResults <- PhraseReadResults{nil, err}
 			return
+		} else {
+			phraseResults <- PhraseReadResults{parsedPhrase, nil}
 		}
-
-		for _, phrase := range phrases {
-			parsedPhrase, err := datatypes.ParsePhrase(phrase)
-			if err != nil {
-				phraseResults <- PhraseReadResults{nil, err}
-				return
-			} else {
-				phraseResults <- PhraseReadResults{parsedPhrase, nil}
-			}
-		}
-	}()
-
-	return phraseResults
+	}
 }
 
 type PhraseWav struct {
@@ -93,38 +87,32 @@ type PhraseWavResults struct {
 /**
  * Management function for spawning go routines to generate WAV files and manage the channel to do so
  *
- * The channel is safe to read until completion
+ * Closes the channel provided as input
  */
-func generateWavFilesForPhrases(tpv *datatypes.TaskProcessVariables, phraseResults chan PhraseReadResults) chan PhraseWavResults {
-	phrasesGenerated := make(chan PhraseWavResults)
+func generateWavFilesForPhrases(tpv *datatypes.TaskProcessVariables, phraseResults <-chan PhraseReadResults, phrasesGenerated chan<- PhraseWavResults) {
+	defer close(phrasesGenerated)
 
-	go func() {
-		defer close(phrasesGenerated)
+	var wg sync.WaitGroup
 
-		var wg sync.WaitGroup
-
-		for phraseResult := range phraseResults {
-			if phraseResult.err != nil {
-				phrasesGenerated <- PhraseWavResults{nil, phraseResult.err}
-				return
-			}
-
-			phrase := phraseResult.phrase
-
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				generateWavFileForPhrase(tpv, phrase, phrasesGenerated)
-			}()
+	for phraseResult := range phraseResults {
+		if phraseResult.err != nil {
+			phrasesGenerated <- PhraseWavResults{nil, phraseResult.err}
+			return
 		}
 
-		wg.Wait()
-	}()
+		phrase := phraseResult.phrase
 
-	return phrasesGenerated
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			generateWavFileForPhrase(tpv, phrase, phrasesGenerated)
+		}()
+	}
+
+	wg.Wait()
 }
 
-func generateWavFileForPhrase(tpv *datatypes.TaskProcessVariables, phrase *datatypes.Phrase, phrasesGenerated chan PhraseWavResults) {
+func generateWavFileForPhrase(tpv *datatypes.TaskProcessVariables, phrase *datatypes.Phrase, phrasesGenerated chan<- PhraseWavResults) {
 	err := (*tpv.Generator).GenerateAudioFile(tpv.Parameters, phrase.PhraseText, tpv.GetPhraseFilePath(phrase.PhraseIndex))
 
 	if err != nil {
@@ -164,8 +152,10 @@ func processTask(results chan string, task *datatypes.Task, generator *datatypes
 	wavs := make(chan string)
 	go convertWav(wavs, tpv)
 
-	parsedPhrases := readPhrasesFromFile(tpv.Task.PhraseFilename)
-	phrasesWithFiles := generateWavFilesForPhrases(tpv, parsedPhrases)
+	phraseReads := make(chan PhraseReadResults)
+	go readPhrasesFromFile(tpv.Task.PhraseFilename, phraseReads)
+	phrasesWithFiles := make(chan PhraseWavResults)
+	go generateWavFilesForPhrases(tpv, phraseReads, phrasesWithFiles)
 
 	tpv.Println("Wave Filepath:", <-wavs)
 
