@@ -11,11 +11,13 @@ import (
 
 	"github.com/sillsdev/go-aeneas/audiogenerators"
 	"github.com/sillsdev/go-aeneas/datatypes"
+	"github.com/sillsdev/go-aeneas/mfcc"
 )
 
 var (
 	logLevel = 0
 	batch    = ""
+	plot     = false
 )
 
 func readFileLines(path string) ([]string, error) {
@@ -157,8 +159,6 @@ func processTask(results chan string, task *datatypes.Task, generator *datatypes
 	phrasesWithFiles := make(chan PhraseWavResults)
 	go generateWavFilesForPhrases(tpv, phraseReads, phrasesWithFiles)
 
-	tpv.Println("Wave Filepath:", <-wavs)
-
 	tpv.Println("Logs for generated phrases:")
 	for phraseLogItem := range phrasesWithFiles {
 		if phraseLogItem.err != nil {
@@ -168,6 +168,26 @@ func processTask(results chan string, task *datatypes.Task, generator *datatypes
 		}
 	}
 
+	mfccResultsChan := make(chan error)
+	go func() {
+		mfccResults, err := mfcc.GenerateMfcc(<-wavs)
+		if err != nil {
+			mfccResultsChan <- err
+		} else {
+			tpv.MfccResults = mfccResults
+			mfccResultsChan <- nil
+		}
+	}()
+
+	//
+	if err := <-mfccResultsChan; err != nil {
+		//
+		tpv.Println("Error handling MFCC ", err)
+	}
+
+	if plot {
+		mfcc.PlotMFCC(tpv.MfccResults)
+	}
 	tpv.Println("Done!")
 }
 

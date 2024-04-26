@@ -18,6 +18,7 @@ func processArguments() {
 		showHelp          *bool
 		showVersion       bool
 		showVersionNumber bool
+		plotMFCC          bool
 	)
 
 	// Parse flags
@@ -28,6 +29,7 @@ func processArguments() {
 	flag.Lookup("verbose").Shorthand = "v"
 	flag.BoolVar(&showVersion, "version", false, "display full version information")
 	flag.BoolVar(&showVersionNumber, "version-number", false, "display version number")
+	flag.BoolVar(&plotMFCC, "plot", false, "plot mfcc coefficients")
 	// Note: if we use BoolVar for help, we still see "pflag: help requested"
 	showHelp = flag.BoolP("help", "h", false, "display help")
 	flag.Parse()
@@ -51,5 +53,10 @@ func processArguments() {
 		// see: https://goreleaser.com/cookbooks/using-main.version/
 		fmt.Printf("go-aeneas version %s (commit %s, built at %s)\n", version, commit, date)
 		os.Exit(0)
+	}
+
+	if plotMFCC {
+		// Optional --plot bool flag to generate a graphical representation of mfcc coefficients in a .png
+		plot = true
 	}
 }
