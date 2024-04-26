@@ -17,7 +17,7 @@ import (
 var (
 	logLevel = 0
 	batch    = ""
-	DoPlot   = false
+	plot     = false
 )
 
 func readFileLines(path string) ([]string, error) {
@@ -185,7 +185,7 @@ func processTask(results chan string, task *datatypes.Task, generator *datatypes
 		tpv.Println("Error handling MFCC ", err)
 	}
 
-	if DoPlot {
+	if plot {
 		mfcc.PlotMFCC(tpv.MfccResults)
 	}
 	tpv.Println("Done!")

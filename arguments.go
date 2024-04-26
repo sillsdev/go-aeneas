@@ -57,6 +57,6 @@ func processArguments() {
 
 	if plotMFCC {
 		// Optional --plot bool flag to generate a graphical representation of mfcc coefficients in a .png
-		DoPlot = true
+		plot = true
 	}
 }
