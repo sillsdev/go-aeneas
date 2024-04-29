@@ -30,6 +30,8 @@ func processArguments() {
 	flag.BoolVar(&showVersion, "version", false, "display full version information")
 	flag.BoolVar(&showVersionNumber, "version-number", false, "display version number")
 	flag.BoolVar(&plotMFCC, "plot", false, "plot mfcc coefficients")
+	flag.BoolVar(&listGenerators, "list-generators", false, "list generators available")
+	flag.StringVar(&generator, "generator", "copy", "select the generator to use")
 	// Note: if we use BoolVar for help, we still see "pflag: help requested"
 	showHelp = flag.BoolP("help", "h", false, "display help")
 	flag.Parse()
