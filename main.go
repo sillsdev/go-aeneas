@@ -277,10 +277,17 @@ func processTask(results chan string, task *datatypes.Task, generator *datatypes
 		timeOffset = dtw.RunDtw(tpv.MfccInputResults, *mfccPhrasesMap[nextPhrase].mfcc.mfccResult, timeOffset)
 
 		temp := fmt.Sprintf("%d\t%d\t%s\n", oldTimeOffset/22050, timeOffset/22050, mfccPhrasesMap[nextPhrase].mfcc.phraseAndWav.phrase.PhraseIndex)
-		file.WriteString(temp)
+		_, err := file.WriteString(temp)
+		if err != nil {
+			tpv.Println("Error writing file! ", err)
+		}
 
 		mfccPhrasesMap[nextPhrase] = nil
 		// update time offset
+	}
+
+	if plot {
+		mfcc.PlotMFCC(tpv.MfccInputResults)
 	}
 
 	tpv.Println("Done with ", tpv.Task.Description, "!")
