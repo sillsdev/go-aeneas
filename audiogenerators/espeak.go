@@ -55,8 +55,19 @@ func (gen EspeakGenerator) GenerateAudioFile(parameters *datatypes.Parameters, p
 	return nil
 }
 
-func (gen EspeakGenerator) GetName() string {
+func (gen EspeakGenerator) Close() {
+}
+
+type EspeakGeneratorFactory struct {
+}
+
+func (fac EspeakGeneratorFactory) GetName() string {
 	return "espeak-ng"
+}
+
+func (fac EspeakGeneratorFactory) GetAudioGenerator() (*datatypes.AudioGenerator, error) {
+	var generator datatypes.AudioGenerator = EspeakGenerator{ctx: espeak.Context{}}
+	return &generator, nil
 }
 
 func GetEspeakGenerator() *EspeakGenerator {
