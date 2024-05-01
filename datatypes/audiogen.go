@@ -1,6 +1,6 @@
 package datatypes
 
 type AudioGenerator interface {
-	GenerateAudioFile(parameters *Parameters, phrase string, outputPath string) error
+	GenerateAudioFile(parameters *Parameters, phrase *Phrase, outputPath string) error
 	GetName() string
 }

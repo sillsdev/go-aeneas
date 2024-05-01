@@ -6,7 +6,7 @@ import (
 
 	"github.com/sillsdev/go-aeneas/datatypes"
 
-	"gopkg.in/BenLubar/espeak.v2"
+	"github.com/sillsdev/espeak"
 )
 
 // C Parent: https://github.com/espeak-ng/espeak-ng/blob/master/docs/guide.md
@@ -17,7 +17,7 @@ type EspeakGenerator struct {
 	ctx espeak.Context
 }
 
-func (gen EspeakGenerator) GenerateAudioFile(parameters *datatypes.Parameters, phrase string, outputPath string) error {
+func (gen EspeakGenerator) GenerateAudioFile(parameters *datatypes.Parameters, phrase *datatypes.Phrase, outputPath string) error {
 	language := parameters.Get("language")
 
 	//similar to printf in C, prints to the string
@@ -34,7 +34,7 @@ func (gen EspeakGenerator) GenerateAudioFile(parameters *datatypes.Parameters, p
 				"%s"
 			</voice>
 		</speak>
-	`, language, phrase)
+	`, language, phrase.PhraseText)
 
 	ctx := gen.ctx
 	err := ctx.SynthesizeText(phrase_ssml)

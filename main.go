@@ -15,9 +15,11 @@ import (
 )
 
 var (
-	logLevel = 0
-	batch    = ""
-	plot     = false
+	logLevel       = 0
+	batch          = ""
+	plot           = false
+	listGenerators = false
+	generator      = ""
 )
 
 func readFileLines(path string) ([]string, error) {
@@ -115,7 +117,7 @@ func generateWavFilesForPhrases(tpv *datatypes.TaskProcessVariables, phraseResul
 }
 
 func generateWavFileForPhrase(tpv *datatypes.TaskProcessVariables, phrase *datatypes.Phrase, phrasesGenerated chan<- PhraseWavResults) {
-	err := (*tpv.Generator).GenerateAudioFile(tpv.Parameters, phrase.PhraseText, tpv.GetPhraseFilePath(phrase.PhraseIndex))
+	err := (*tpv.Generator).GenerateAudioFile(tpv.Parameters, phrase, tpv.GetPhraseFilePath(phrase.PhraseIndex))
 
 	if err != nil {
 		phrasesGenerated <- PhraseWavResults{nil, err}
@@ -209,6 +211,17 @@ func convertWav(wavs chan<- string, tpv *datatypes.TaskProcessVariables) {
 func main() {
 	processArguments()
 
+	audioGens := audiogenerators.GetAudioGenerators()
+
+	if listGenerators {
+		fmt.Println("Audio generators available:")
+		for _, generator := range audioGens {
+			fmt.Printf("\t%s\n", generator.GetName())
+		}
+
+		os.Exit(0)
+	}
+
 	tasks := []*datatypes.Task{}
 	if len(batch) > 0 {
 		fmt.Println("Batch file:", batch)
@@ -232,13 +245,20 @@ func main() {
 		tasks = append(tasks, task)
 	}
 
-	results := make(chan string)
-	var generator datatypes.AudioGenerator = audiogenerators.GetEspeakGenerator()
+	var finalAudioGenerator *datatypes.AudioGenerator = nil
+	for _, availableGen := range audioGens {
+		if availableGen.GetName() == generator {
+			finalAudioGenerator = &availableGen
+		}
+	}
 
+	fmt.Printf("Using audio generator %s\n", (*finalAudioGenerator).GetName())
+
+	results := make(chan string)
 	tempDir := createTempDir()
 
 	for _, task := range tasks {
-		go processTask(results, task, &generator, tempDir)
+		go processTask(results, task, finalAudioGenerator, tempDir)
 	}
 
 	for range tasks {
