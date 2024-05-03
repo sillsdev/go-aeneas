@@ -15,22 +15,22 @@ type Task struct {
 }
 
 type TaskProcessVariables struct {
-	Task        *Task
-	Logs        strings.Builder
-	Parameters  *Parameters
-	Generator   *AudioGenerator
-	TempDir     string
-	MfccResults [][]float64
+	Task             *Task
+	Logs             strings.Builder
+	Parameters       *Parameters
+	Generator        *AudioGenerator
+	TempDir          string
+	MfccInputResults [][]float64
 }
 
 func NewTaskProcessVariables(task *Task, generator *AudioGenerator, tempDir string) *TaskProcessVariables {
 	return &TaskProcessVariables{
-		Task:        task,
-		Logs:        strings.Builder{},
-		Parameters:  ParseParameters(task.Parameters),
-		Generator:   generator,
-		TempDir:     tempDir,
-		MfccResults: nil,
+		Task:             task,
+		Logs:             strings.Builder{},
+		Parameters:       ParseParameters(task.Parameters),
+		Generator:        generator,
+		TempDir:          tempDir,
+		MfccInputResults: nil,
 	}
 }
 

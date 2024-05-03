@@ -7,10 +7,13 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/sillsdev/go-aeneas/audiogenerators"
 	"github.com/sillsdev/go-aeneas/datatypes"
+	"github.com/sillsdev/go-aeneas/dtw"
 	"github.com/sillsdev/go-aeneas/mfcc"
 )
 
@@ -93,8 +96,9 @@ type PhraseWavResults struct {
  *
  * Closes the channel provided as input
  */
-func generateWavFilesForPhrases(tpv *datatypes.TaskProcessVariables, phraseResults <-chan PhraseReadResults, phrasesGenerated chan<- PhraseWavResults) {
+func generateWavFilesForPhrases(tpv *datatypes.TaskProcessVariables, phraseOrder chan<- *datatypes.Phrase, phraseResults <-chan PhraseReadResults, phrasesGenerated chan<- PhraseWavResults) {
 	defer close(phrasesGenerated)
+	defer close(phraseOrder)
 
 	var wg sync.WaitGroup
 
@@ -104,7 +108,9 @@ func generateWavFilesForPhrases(tpv *datatypes.TaskProcessVariables, phraseResul
 			return
 		}
 
+		phraseOrder <- phraseResult.phrase
 		phrase := phraseResult.phrase
+		//fmt.Println("Phrase Recieved: ", phraseOrder) // Read the value from the channel
 
 		wg.Add(1)
 		go func() {
@@ -125,6 +131,43 @@ func generateWavFileForPhrase(tpv *datatypes.TaskProcessVariables, phrase *datat
 	}
 
 	phrasesGenerated <- PhraseWavResults{&PhraseWav{phrase, tpv.GetPhraseFilePath(phrase.PhraseIndex)}, nil}
+}
+
+type GeneratedMfcCoefficients struct {
+	phraseAndWav PhraseWav
+	mfccResult   *[][]float64
+}
+
+type MfccResults struct {
+	mfcc *GeneratedMfcCoefficients
+	err  error
+}
+
+func generateMfccForWavFiles(tpv *datatypes.TaskProcessVariables, phrasesGenerated <-chan PhraseWavResults, mfccResults chan<- MfccResults) {
+	defer close(mfccResults)
+
+	var wg sync.WaitGroup
+
+	for phraseResult := range phrasesGenerated {
+		if phraseResult.err != nil {
+			mfccResults <- MfccResults{nil, phraseResult.err}
+			return
+		}
+
+		phraseAndWav := phraseResult.phraseWav
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			// do your mfcc, then write to mfccResults
+			results, err := mfcc.GenerateMfcc(phraseAndWav.phraseWavFilePath)
+			if err != nil {
+				mfccResults <- MfccResults{nil, err}
+				return
+			}
+			mfccResults <- MfccResults{&GeneratedMfcCoefficients{*phraseAndWav, &results}, nil}
+		}()
+	}
+	wg.Wait()
 }
 
 /**
@@ -159,38 +202,88 @@ func processTask(results chan string, task *datatypes.Task, generator *datatypes
 	phraseReads := make(chan PhraseReadResults)
 	go readPhrasesFromFile(tpv.Task.PhraseFilename, phraseReads)
 	phrasesWithFiles := make(chan PhraseWavResults)
-	go generateWavFilesForPhrases(tpv, phraseReads, phrasesWithFiles)
+	phraseOrder := make(chan *datatypes.Phrase)
 
-	tpv.Println("Logs for generated phrases:")
-	for phraseLogItem := range phrasesWithFiles {
-		if phraseLogItem.err != nil {
-			tpv.Println("\tError generating phrase: ", phraseLogItem.err)
-		} else {
-			tpv.Println("\tFile successfully generated! ", phraseLogItem.phraseWav.phraseWavFilePath)
-		}
+	go generateWavFilesForPhrases(tpv, phraseOrder, phraseReads, phrasesWithFiles)
+	mfccPhraseResults := make(chan MfccResults)
+	go generateMfccForWavFiles(tpv, phrasesWithFiles, mfccPhraseResults)
+
+	//fmt.Println("Number of Ordered Phrases Processed: ", len(phraseOrder))
+
+	mfccPhrasesMap := make(map[string]*MfccResults)
+
+	timeOffsetFloat, err := strconv.ParseFloat(tpv.Parameters.Get("is_audio_file_detect_head_max"), 64)
+	if err != nil {
+		tpv.Println("Error: ", err)
+		return
 	}
+	tpv.Println("Initial Time Offset: ", timeOffsetFloat)
+	timeOffset := (int)(timeOffsetFloat * 22050)
+
+	file, err := os.Create(tpv.Task.OutputFilename)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	defer file.Close()
+
+	splitDescription := strings.Split(tpv.Task.Description, " ")
+	book := strings.TrimSpace(splitDescription[0])
+	chapter := strings.TrimSpace(splitDescription[1])
+
+	content := fmt.Sprintf(`\id %s
+\c %s
+\level phrase
+\separators . ? ! : ; ,
+`, book, chapter)
+
+	// Write content to the file
+	_, err = file.WriteString(content)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	tpv.Println("Timing File created and written successfully.")
 
 	mfccResultsChan := make(chan error)
 	go func() {
-		mfccResults, err := mfcc.GenerateMfcc(<-wavs)
+		mfccInputResults, err := mfcc.GenerateMfcc(<-wavs)
 		if err != nil {
 			mfccResultsChan <- err
 		} else {
-			tpv.MfccResults = mfccResults
+			tpv.MfccInputResults = mfccInputResults
 			mfccResultsChan <- nil
 		}
 	}()
 
-	//
 	if err := <-mfccResultsChan; err != nil {
-		//
 		tpv.Println("Error handling MFCC ", err)
 	}
 
-	if plot {
-		mfcc.PlotMFCC(tpv.MfccResults)
+	for phrase := range phraseOrder {
+		nextPhrase := phrase.PhraseIndex
+
+		ok := false
+		_, ok = mfccPhrasesMap[nextPhrase]
+
+		for !ok {
+			val := <-mfccPhraseResults
+			mfccPhrasesMap[val.mfcc.phraseAndWav.phrase.PhraseIndex] = &val
+			_, ok = mfccPhrasesMap[nextPhrase]
+		}
+
+		tpv.Println("Handling phrase MFCC/DTW: ", mfccPhrasesMap[nextPhrase].mfcc.phraseAndWav.phrase.PhraseIndex)
+		oldTimeOffset := timeOffset
+		timeOffset = dtw.RunDtw(tpv.MfccInputResults, *mfccPhrasesMap[nextPhrase].mfcc.mfccResult, timeOffset)
+
+		temp := fmt.Sprintf("%d\t%d\t%s\n", oldTimeOffset/22050, timeOffset/22050, mfccPhrasesMap[nextPhrase].mfcc.phraseAndWav.phrase.PhraseIndex)
+		file.WriteString(temp)
+
+		mfccPhrasesMap[nextPhrase] = nil
+		// update time offset
 	}
-	tpv.Println("Done!")
+
+	tpv.Println("Done with ", tpv.Task.Description, "!")
 }
 
 func createTempDir() string {
@@ -203,7 +296,7 @@ func createTempDir() string {
 
 func convertWav(wavs chan<- string, tpv *datatypes.TaskProcessVariables) {
 	filepath := tpv.GetWavFilepath()
-	out, _ := exec.Command("ffmpeg", "-i", tpv.Task.AudioFilename, "-acodec", "pcm_s16le", "-ac", "1", "-ar", "16000", filepath).CombinedOutput()
+	out, _ := exec.Command("ffmpeg", "-i", tpv.Task.AudioFilename, "-acodec", "pcm_s16le", "-ac", "1", "-ar", "22050", filepath).CombinedOutput() //Swapped to a sample rate of 22050 from 16000
 	wavs <- filepath
 	tpv.Println("ffmpeg output : ", string(out))
 }
@@ -224,7 +317,7 @@ func main() {
 
 	tasks := []*datatypes.Task{}
 	if len(batch) > 0 {
-		fmt.Println("Batch file:", batch)
+		//fmt.Println("Batch file:", batch)
 		content, err := os.ReadFile(batch)
 		if err != nil {
 			log.Fatal("Error while reading batch file", err)

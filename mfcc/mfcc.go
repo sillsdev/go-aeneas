@@ -11,7 +11,7 @@ import (
 )
 
 func GenerateMfcc(inFileName string) ([][]float64, error) {
-	fmt.Println("Beginning mfcc generation for inputted .wav file: ", inFileName)
+	//fmt.Println("Beginning mfcc generation for inputted .wav file: ", inFileName)
 
 	signal, err := mfccLoadSignal(inFileName)
 	if err != nil {
@@ -104,10 +104,10 @@ func mfccFrameSignal(signal64 []float64) [][]float64 {
 	if numFrames != float64(int(numFrames)) {                                            // If there is a partial frame truncate and add 1, then handle the the partial/tail frame.
 		numFrames = float64(int(numFrames))
 	}
-	fmt.Println("signal64: ", len(signal64))
-	fmt.Println("frameSize: ", frameSize)
-	fmt.Println("frameStep: ", frameStep)
-	fmt.Println("numFrames: ", numFrames)
+	// fmt.Println("signal64: ", len(signal64))
+	// fmt.Println("frameSize: ", frameSize)
+	// fmt.Println("frameStep: ", frameStep)
+	// fmt.Println("numFrames: ", numFrames)
 
 	frames := make([][]float64, int(numFrames))
 	for i := 0; i < int(numFrames); i++ {
@@ -232,6 +232,10 @@ func mfccWeighSignal(powerSpectrum [][]float64) [][]float64 {
 	paddedSpectrum := make([][]float64, len(powerSpectrum))
 	for i := 0; i < len(powerSpectrum); i++ {
 		temp := make([]float64, len(powerSpectrum[i])+40)
+
+		// Possible BIG ISSUE Here: The way that I'm copying on the next line may be fundamentally flawed,
+		// but may be resulting in 20 null values at the start of the slice.
+
 		copy(temp[20:], powerSpectrum[i])
 		paddedSpectrum[i] = temp
 	}
